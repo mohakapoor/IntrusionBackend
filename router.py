@@ -15,13 +15,7 @@ configure_cors(app)
 router = APIRouter(prefix="/intrusiondetection")
 
 class PredictionInput(BaseModel):
-    x: List[float]
-    
-    @validator('x')
-    def validate_x_length(cls, v):
-        if len(v) != 34:
-            raise ValueError(f'Expected 34 features, got {len(v)}')
-        return v
+    target_class: int
 
 
 security = HTTPBearer()
@@ -56,12 +50,10 @@ async def predict_logreg_endpoint(
 ):
     """
     Logistic Regression prediction endpoint
-    Accepts JSON with 'x' field containing a list of 34 numeric values
+    Accepts JSON with 'target_class' (int)
     """
     try:
-        x = pd.DataFrame([data.x])
-        
-        predictions = predict_logreg(x)
+        predictions = predict_logreg(data.target_class)
         return {"prediction": int(predictions[0])}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Prediction error: {str(e)}")
@@ -73,12 +65,10 @@ async def predict_lightgbm_endpoint(
 ):
     """
     LightGBM prediction endpoint
-    Accepts JSON with 'x' field containing a list of 34 numeric values
+    Accepts JSON with 'target_class' (int)
     """
     try:
-        x = pd.DataFrame([data.x])
-        
-        predictions = predict_lightgbm(x)
+        predictions = predict_lightgbm(data.target_class)
         return {"prediction": int(predictions[0])}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Prediction error: {str(e)}")
@@ -90,12 +80,10 @@ async def predict_ffnn_endpoint(
 ):
     """
     Feed-forward Neural Network prediction endpoint
-    Accepts JSON with 'x' field containing a list of 34 numeric values
+    Accepts JSON with 'target_class' (int)
     """
     try:
-        x = pd.DataFrame([data.x])
-        
-        predictions = predict_ffnn(x)
+        predictions = predict_ffnn(data.target_class)
         return {"prediction": int(predictions[0])}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Prediction error: {str(e)}")

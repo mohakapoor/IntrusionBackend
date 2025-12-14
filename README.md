@@ -69,9 +69,7 @@ All prediction endpoints expect the same request body structure:
 **Request Body:**
 ```json
 {
-  "features": [
-    // Array of exactly 34 numeric values
-  ]
+  "target_class": 1
 }
 ```
 
@@ -96,12 +94,7 @@ curl -X POST http://localhost:8000/intrusiondetection/predict/logreg \
   -H "Authorization: Bearer your-secure-token-here" \
   -H "Content-Type: application/json" \
   -d '{
-    "features": [
-      0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0,
-      0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0,
-      0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0,
-      0.1, 0.2, 0.3, 0.4
-    ]
+    "target_class": 0
   }'
 ```
 
@@ -127,12 +120,7 @@ curl -X POST http://localhost:8000/intrusiondetection/predict/lightgbm \
   -H "Authorization: Bearer your-secure-token-here" \
   -H "Content-Type: application/json" \
   -d '{
-    "features": [
-      0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0,
-      0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0,
-      0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0,
-      0.1, 0.2, 0.3, 0.4
-    ]
+    "target_class": 2
   }'
 ```
 
@@ -158,12 +146,7 @@ curl -X POST http://localhost:8000/intrusiondetection/predict/ffnn \
   -H "Authorization: Bearer your-secure-token-here" \
   -H "Content-Type: application/json" \
   -d '{
-    "features": [
-      0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0,
-      0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0,
-      0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0,
-      0.1, 0.2, 0.3, 0.4
-    ]
+    "target_class": 3
   }'
 ```
 
