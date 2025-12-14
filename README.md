@@ -19,44 +19,169 @@ intrusionTrackerBackend/
 
 ## API Endpoints
 
-### Public Endpoints
+### 🔓 Public Endpoints
 
-**GET** `/intrusiondetection/api_name`  
-Returns API name and version
+#### Get API Information
+```http
+GET /intrusiondetection/api_name
+```
 
-**GET** `/intrusiondetection/health`  
-Health check endpoint
+**Response:**
+```json
+{
+  "name": "Intrusion Detection API",
+  "version": "1.0.0"
+}
+```
 
-### Protected Endpoints
+**Example:**
+```bash
+curl -X GET http://localhost:8000/intrusiondetection/api_name
+```
 
-All prediction endpoints require:
-- Header: `Authorization: Bearer <your-token>`
-- Body: `{"features": [array of 34 numeric values]}`
+---
 
-**POST** `/intrusiondetection/predict/logreg`  
-Binary classification (0 or 1)
+#### Health Check
+```http
+GET /intrusiondetection/health
+```
 
-**POST** `/intrusiondetection/predict/lightgbm`  
-Multi-class classification
+**Response:**
+```json
+{
+  "status": "healthy"
+}
+```
 
-**POST** `/intrusiondetection/predict/ffnn`  
-Multi-class classification using neural network
+**Example:**
+```bash
+curl -X GET http://localhost:8000/intrusiondetection/health
+```
 
-### Example Request
+### 🔒 Protected Endpoints
 
+> **Authentication Required:** All prediction endpoints require a Bearer token in the Authorization header.
+
+#### Common Request Format
+
+All prediction endpoints expect the same request body structure:
+
+**Request Body:**
+```json
+{
+  "features": [
+    // Array of exactly 34 numeric values
+  ]
+}
+```
+
+**Required Headers:**
+```http
+Authorization: Bearer <your-token>
+Content-Type: application/json
+```
+
+---
+
+#### Logistic Regression Prediction
+```http
+POST /intrusiondetection/predict/logreg
+```
+
+Binary classification endpoint that returns either 0 (normal) or 1 (intrusion).
+
+**Example Request:**
 ```bash
 curl -X POST http://localhost:8000/intrusiondetection/predict/logreg \
   -H "Authorization: Bearer your-secure-token-here" \
   -H "Content-Type: application/json" \
   -d '{
-    "features": [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0,
-                 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0,
-                 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0,
-                 0.1, 0.2, 0.3, 0.4]
+    "features": [
+      0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0,
+      0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0,
+      0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0,
+      0.1, 0.2, 0.3, 0.4
+    ]
   }'
 ```
 
-Response: `{"prediction": 0}`
+**Response:**
+```json
+{
+  "prediction": 0
+}
+```
+
+---
+
+#### LightGBM Prediction
+```http
+POST /intrusiondetection/predict/lightgbm
+```
+
+Multi-class classification using LightGBM model.
+
+**Example Request:**
+```bash
+curl -X POST http://localhost:8000/intrusiondetection/predict/lightgbm \
+  -H "Authorization: Bearer your-secure-token-here" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "features": [
+      0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0,
+      0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0,
+      0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0,
+      0.1, 0.2, 0.3, 0.4
+    ]
+  }'
+```
+
+**Response:**
+```json
+{
+  "prediction": 2
+}
+```
+
+---
+
+#### Feed-Forward Neural Network Prediction
+```http
+POST /intrusiondetection/predict/ffnn
+```
+
+Multi-class classification using a neural network model.
+
+**Example Request:**
+```bash
+curl -X POST http://localhost:8000/intrusiondetection/predict/ffnn \
+  -H "Authorization: Bearer your-secure-token-here" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "features": [
+      0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0,
+      0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0,
+      0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0,
+      0.1, 0.2, 0.3, 0.4
+    ]
+  }'
+```
+
+**Response:**
+```json
+{
+  "prediction": 3
+}
+```
+
+### 📝 Response Codes
+
+| Status Code | Description |
+|-------------|-------------|
+| `200 OK` | Successful prediction |
+| `401 Unauthorized` | Invalid or missing Bearer token |
+| `422 Unprocessable Entity` | Invalid request body (e.g., wrong number of features) |
+| `500 Internal Server Error` | Server error during prediction |
 
 ## Models
 
