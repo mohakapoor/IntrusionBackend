@@ -25,3 +25,6 @@ Thumbs.db
 
 # Logs
 *.log
+
+#dataset
+test_mc.parquet
