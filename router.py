@@ -53,8 +53,8 @@ async def predict_logreg_endpoint(
     Accepts JSON with 'target_class' (int)
     """
     try:
-        predictions = predict_logreg(data.target_class)
-        return {"prediction": int(predictions[0])}
+        predictions, row_index = predict_logreg(data.target_class)
+        return {"prediction": int(predictions[0]), "row_index": int(row_index)}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Prediction error: {str(e)}")
 
@@ -68,8 +68,8 @@ async def predict_lightgbm_endpoint(
     Accepts JSON with 'target_class' (int)
     """
     try:
-        predictions = predict_lightgbm(data.target_class)
-        return {"prediction": int(predictions[0])}
+        predictions, row_index = predict_lightgbm(data.target_class)
+        return {"prediction": int(predictions[0]), "row_index": int(row_index)}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Prediction error: {str(e)}")
 
@@ -83,8 +83,8 @@ async def predict_ffnn_endpoint(
     Accepts JSON with 'target_class' (int)
     """
     try:
-        predictions = predict_ffnn(data.target_class)
-        return {"prediction": int(predictions[0])}
+        predictions, row_index = predict_ffnn(data.target_class)
+        return {"prediction": int(predictions[0]), "row_index": int(row_index)}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Prediction error: {str(e)}")
 

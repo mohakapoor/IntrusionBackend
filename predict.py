@@ -65,7 +65,7 @@ def predict_ffnn(target_class):
         logits = model(X_tensor)
         preds = logits.argmax(dim=1)
     preds = preds.numpy()
-    return preds
+    return preds, sample.index[0]
 
 
 
@@ -78,10 +78,12 @@ def predict_lightgbm(target_class):
     except ValueError:
         raise ValueError(f"No data found for class {target_class}")
 
-    y = lgbm.predict(sample)
+    # To be safe and consistent, we convert to numpy here too
+    sample_np = sample.values
+    y = lgbm.predict(sample_np)
 
     
-    return y
+    return y, sample.index[0]
 
 
 
@@ -95,12 +97,14 @@ def predict_logreg(target_class):
     except ValueError:
         raise ValueError(f"No data found for class {target_class}")
         
-    y = (sigmoid(sample@W +b)>0.5).astype(int)
+    # Convert to numpy to avoid index issues with pandas
+    sample_np = sample.values
+    y = (sigmoid(sample_np@W +b)>0.5).astype(int)
     # values, counts = np.unique(y, return_counts=True)
     
     # print(values)
     # print(counts)
-    return y
+    return y, sample.index[0]
 
 
 
