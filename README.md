@@ -2,55 +2,19 @@
 
 FastAPI backend for network intrusion detection using machine learning models.
 
-## Overview
+## Project Structure
 
-This API provides endpoints for classifying network traffic patterns using three different ML models:
-- Logistic Regression (binary classification)
-- LightGBM (multi-class classification)
-- Feed-Forward Neural Network (multi-class classification)
-
-## Setup
-
-1. Clone the repository and navigate to the project directory
-```bash
-git clone <repository-url>
-cd intrusionTrackerBackend
 ```
-
-2. Create a virtual environment and activate it
-```bash
-python -m venv .venv
-source .venv/bin/activate  # Linux/Mac
-# or
-.venv\Scripts\activate  # Windows
-```
-
-3. Install dependencies
-```bash
-pip install fastapi uvicorn pandas numpy torch lightgbm scikit-learn python-dotenv joblib
-```
-
-4. Create a `.env` file with your configuration
-```env
-API_HOST=0.0.0.0
-API_PORT=8000
-BEARER_TOKEN=your-secure-token-here
-ALLOWED_ORIGINS=http://localhost:3000,https://yourdomain.com
-```
-
-5. Ensure model files are in the `models/` directory:
-- `logreg_W.npy` and `logreg_b.npy` (logistic regression)
-- `multiclass_lightgbm.joblib` (LightGBM)
-- `ffnn_multiclass.pt` (neural network)
-
-## Running the Server
-
-```bash
-# Development
-uvicorn router:app --reload --host 0.0.0.0 --port 8000
-
-# Production
-uvicorn router:app --host 0.0.0.0 --port 8000 --workers 4
+intrusionTrackerBackend/
+├── cors.py                 # CORS configuration
+├── predict.py              # Model loading and prediction logic
+├── router.py               # FastAPI routes
+├── test.py                 # Test scripts
+└── models/                 # ML model files
+    ├── ffnn_multiclass.pt
+    ├── logreg_b.npy
+    ├── logreg_W.npy
+    └── multiclass_lightgbm.joblib
 ```
 
 ## API Endpoints
@@ -63,7 +27,7 @@ Returns API name and version
 **GET** `/intrusiondetection/health`  
 Health check endpoint
 
-### Protected Endpoints (Require Bearer Token)
+### Protected Endpoints
 
 All prediction endpoints require:
 - Header: `Authorization: Bearer <your-token>`
@@ -94,33 +58,30 @@ curl -X POST http://localhost:8000/intrusiondetection/predict/logreg \
 
 Response: `{"prediction": 0}`
 
-## Project Structure
+## Models
 
-```
-intrusionTrackerBackend/
-├── .env                    # Environment configuration
-├── cors.py                 # CORS configuration
-├── predict.py              # Model loading and prediction logic
-├── router.py               # FastAPI routes
-├── test.py                 # Test scripts
-└── models/                 # ML model files
-    ├── ffnn_multiclass.pt
-    ├── logreg_b.npy
-    ├── logreg_W.npy
-    └── multiclass_lightgbm.joblib
-```
+Three ML models for network traffic classification:
+- **Logistic Regression**: Binary classification
+- **LightGBM**: Multi-class classification  
+- **Feed-Forward Neural Network**: Multi-class classification
 
-## Testing
+All models expect exactly 34 numeric features as input, normalized according to training data.
 
-Run the test script to verify everything is working:
+## Setup
+
 ```bash
-python test.py
+# Clone and install dependencies
+git clone <repository-url>
+cd intrusionTrackerBackend
+python -m venv .venv
+source .venv/bin/activate  # Linux/Mac or .venv\Scripts\activate on Windows
+pip install fastapi uvicorn pandas numpy torch lightgbm scikit-learn python-dotenv joblib
 ```
 
-## Notes
+Environment variables:
+- `API_HOST`: Server host (default: 0.0.0.0)
+- `API_PORT`: Server port (default: 8000)
+- `BEARER_TOKEN`: Authentication token
+- `ALLOWED_ORIGINS`: CORS allowed origins
 
-- All models expect exactly 34 numeric features as input
-- Features should be normalized according to training data
-- Store bearer tokens securely and never commit them
-- Configure CORS origins appropriately for production
-- Use HTTPS in production environments
+Model files must be placed in the `models/` directory.

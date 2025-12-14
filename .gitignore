@@ -27,4 +27,4 @@ Thumbs.db
 *.log
 
 #dataset
-test_mc.parquet
+*parquet
