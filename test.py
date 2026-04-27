@@ -1,8 +1,4 @@
-import pandas as pd
-df = pd.read_parquet("test_mc.parquet")
-x = df.drop('Attack', axis=1)
-y_test = df['Attack']
+import polars as pl
 
-
-print(x[y_test == 4].iloc[0].tolist()
-)
+df = pl.read_parquet(r'unscaled_test.parquet')
+print(df["Attack"].value_counts())
