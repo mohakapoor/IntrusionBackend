@@ -10,11 +10,11 @@ from utils import sampler, scale_supervised, scale_unsupervised
 warnings.filterwarnings("ignore")
 load_dotenv()
 
-# --- Thresholds ---
+# Thresholds
 AE_THRESHOLD = 0.001068
 ISO_THRESHOLD = 0.233762
 
-# --- Model Definitions ---
+
 DROPOUT = 0.2
 
 class FFNN(nn.Module):
@@ -65,7 +65,7 @@ class Autoencoder(nn.Module):
         z = self.encoder(x)
         return self.decoder(z)
 
-# --- Pre-load Models ---
+# Pre-load Models
 DEVICE = torch.device("cpu")
 
 # Multiclass Models
@@ -88,7 +88,7 @@ AE_MODEL.eval()
 def sigmoid(z):
     return 1 / (1 + np.exp(-z))
 
-# --- Prediction Functions ---
+# Prediction Functions
 
 def _predict_ffnn(raw_sample):
     scaled_data = scale_supervised(raw_sample)
@@ -129,45 +129,40 @@ def _predict_autoencoder(raw_sample):
     prediction = 1 if error_val > AE_THRESHOLD else 0
     return prediction
 
-# --- Legacy Public Functions (For compatibility if needed) ---
+# # --- Legacy Public Functions (For compatibility if needed) ---
 
-def predict_ffnn(target_class):
-    raw_sample, idx = sampler(target_class)
-    return [_predict_ffnn(raw_sample)], idx
+# def predict_ffnn(target_class):
+#     raw_sample, idx = sampler(target_class)
+#     return [_predict_ffnn(raw_sample)], idx
 
-def predict_lightgbm(target_class):
-    raw_sample, idx = sampler(target_class)
-    return [_predict_lightgbm(raw_sample)], idx
+# def predict_lightgbm(target_class):
+#     raw_sample, idx = sampler(target_class)
+#     return [_predict_lightgbm(raw_sample)], idx
 
-def predict_logreg(target_class):
-    raw_sample, idx = sampler(target_class)
-    return [_predict_logreg(raw_sample)], idx
+# def predict_logreg(target_class):
+#     raw_sample, idx = sampler(target_class)
+#     return [_predict_logreg(raw_sample)], idx
 
-def predict_isolation_forest(target_class):
-    raw_sample, idx = sampler(target_class)
-    return [_predict_isolation_forest(raw_sample)], idx
+# def predict_isolation_forest(target_class):
+#     raw_sample, idx = sampler(target_class)
+#     return [_predict_isolation_forest(raw_sample)], idx
 
-def predict_autoencoder(target_class):
-    raw_sample, idx = sampler(target_class)
-    return [_predict_autoencoder(raw_sample)], idx
+# def predict_autoencoder(target_class):
+#     raw_sample, idx = sampler(target_class)
+#     return [_predict_autoencoder(raw_sample)], idx
 
-# --- New Pipeline Function ---
+# New Pipeline Function
 
 def predict_attack(target_class):
-    """
-    Hierarchical Pipeline:
-    1. Sample data once.
-    2. Check Unsupervised models (AE, IsoForest).
-    3. If flag found, run Supervised models (FFNN, LGBM, LogReg).
-    """
     raw_sample, idx = sampler(target_class)
     
-    # 1. Unsupervised Check
+    # Unsupervised Check
     ae_flag = _predict_autoencoder(raw_sample)
     iso_flag = _predict_isolation_forest(raw_sample)
     
     result = {
-        "status": "Normal",
+        "target_class" : target_class,
+        "status": "Benign",
         "row_index": int(idx),
         "unsupervised": {
             "autoencoder": ae_flag,
@@ -175,12 +170,17 @@ def predict_attack(target_class):
         }
     }
     
-    # 2. Supervised Check (if either unsupervised model flags it)
+    # Supervised Check 
     if ae_flag == 1 or iso_flag == 1:
-        result["status"] = "Attack Detected"
+        # Final decision rests with LightGBM
+        lgbm_pred = _predict_lightgbm(raw_sample)
+        
+        if lgbm_pred != 0:
+            result["status"] = "Attack Detected"
+            
         result["supervised"] = {
             "ffnn": _predict_ffnn(raw_sample),
-            "lightgbm": _predict_lightgbm(raw_sample),
+            "lightgbm": lgbm_pred,
             "logreg": _predict_logreg(raw_sample)
         }
     
