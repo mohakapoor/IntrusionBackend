@@ -9,9 +9,12 @@ intrusionTrackerBackend/
 ├── cors.py                 # CORS configuration
 ├── predict.py              # Model loading and prediction logic
 ├── router.py               # FastAPI routes
+├── utils.py                # Data sampling and scaling utilities
 ├── test.py                 # Test scripts
 └── models/                 # ML model files
     ├── ffnn_multiclass.pt
+    ├── isolation_forest.joblib
+    ├── autoencoder_model.pth
     ├── logreg_b.npy
     ├── logreg_W.npy
     └── multiclass_lightgbm.joblib
@@ -60,136 +63,67 @@ curl -X GET http://localhost:8000/intrusiondetection/health
 
 ### 🔒 Protected Endpoints
 
-> **Authentication Required:** All prediction endpoints require a Bearer token in the Authorization header.
+> **Authentication Required:** All prediction endpoints require authentication (Bearer token for HTTP, JSON token for WebSocket).
 
-#### Common Request Format
+#### Hybrid Detection (Recommended)
+```http
+POST /intrusiondetection/predict/hybrid
+```
+Uses the hierarchical pipeline: Anomaly detection (Unsupervised) -> Classification (Supervised).
 
-All prediction endpoints expect the same request body structure:
+---
 
+#### Prediction By Index
+```http
+POST /intrusiondetection/predict/hybrid_by_index
+```
 **Request Body:**
 ```json
 {
-  "target_class": 1
-}
-```
-
-**Required Headers:**
-```http
-Authorization: Bearer <your-token>
-Content-Type: application/json
-```
-
----
-
-#### Logistic Regression Prediction
-```http
-POST /intrusiondetection/predict/logreg
-```
-
-Binary classification endpoint that returns either 0 (normal) or 1 (intrusion).
-
-**Example Request:**
-```bash
-curl -X POST http://localhost:8000/intrusiondetection/predict/logreg \
-  -H "Authorization: Bearer your-secure-token-here" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "target_class": 0
-  }'
-```
-
-**Response:**
-```json
-{
-  "prediction": 0
+  "index": 17502
 }
 ```
 
 ---
 
-#### LightGBM Prediction
+#### WebSocket Streaming
 ```http
-POST /intrusiondetection/predict/lightgbm
+WS /intrusiondetection/ws/stream
 ```
+Streams the dataset in batches of 100 rows.
 
-Multi-class classification using LightGBM model.
-
-**Example Request:**
-```bash
-curl -X POST http://localhost:8000/intrusiondetection/predict/lightgbm \
-  -H "Authorization: Bearer your-secure-token-here" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "target_class": 2
-  }'
-```
-
-**Response:**
+**Authentication & Start Command:**
+After connecting, send the following JSON message to start the stream:
 ```json
 {
-  "prediction": 2
+  "command": "start",
+  "token": "your_secure_token_here",
+  "start_at": 0
 }
 ```
 
 ---
 
-#### Feed-Forward Neural Network Prediction
-```http
-POST /intrusiondetection/predict/ffnn
-```
+#### Individual Model Endpoints
+- `POST /intrusiondetection/predict/logreg`
+- `POST /intrusiondetection/predict/lightgbm`
+- `POST /intrusiondetection/predict/ffnn`
+- `POST /intrusiondetection/predict/autoencoder`
+- `POST /intrusiondetection/predict/isolationForest`
 
-Multi-class classification using a neural network model.
+## Models & Logic
 
-**Example Request:**
-```bash
-curl -X POST http://localhost:8000/intrusiondetection/predict/ffnn \
-  -H "Authorization: Bearer your-secure-token-here" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "target_class": 3
-  }'
-```
-
-**Response:**
-```json
-{
-  "prediction": 3
-}
-```
-
-### 📝 Response Codes
-
-| Status Code | Description |
-|-------------|-------------|
-| `200 OK` | Successful prediction |
-| `401 Unauthorized` | Invalid or missing Bearer token |
-| `422 Unprocessable Entity` | Invalid request body (e.g., wrong number of features) |
-| `500 Internal Server Error` | Server error during prediction |
-
-## Models
-
-Three ML models for network traffic classification:
-- **Logistic Regression**: Binary classification
-- **LightGBM**: Multi-class classification  
-- **Feed-Forward Neural Network**: Multi-class classification
-
-All models expect exactly 34 numeric features as input, normalized according to training data.
+1.  **Unsupervised Layer**: Autoencoder & Isolation Forest act as "flaggers" for anomalies.
+2.  **Supervised Layer**: LightGBM, FFNN, and LogReg provide precise classification.
+3.  **LGBM Veto**: In the hybrid pipeline, LightGBM acts as the final judge to reduce false positives from the unsupervised models.
 
 ## Setup
 
 ```bash
-# Clone and install dependencies
-git clone <repository-url>
-cd intrusionTrackerBackend
-python -m venv .venv
-source .venv/bin/activate  # Linux/Mac or .venv\Scripts\activate on Windows
-pip install fastapi uvicorn pandas numpy torch lightgbm scikit-learn python-dotenv joblib
+# Install dependencies
+pip install fastapi uvicorn pandas numpy torch lightgbm scikit-learn python-dotenv joblib polars websockets
 ```
 
-Environment variables:
-- `API_HOST`: Server host (default: 0.0.0.0)
-- `API_PORT`: Server port (default: 8000)
-- `BEARER_TOKEN`: Authentication token
-- `ALLOWED_ORIGINS`: CORS allowed origins
-
-Model files must be placed in the `models/` directory.
+**Environment Variables (.env):**
+- `TOKEN`: The secure token used for all authenticated requests.
+- `PATH_STANDARD`, `PATH_MINMAX`, `PATH_PCA`, `PATH_LIGHTGBM`: Paths to the model files.
