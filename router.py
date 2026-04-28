@@ -55,10 +55,11 @@ async def predict_logreg_endpoint(
     try:
         raw_sample,idx = sampler(data.target_class)
         try:
-            predictions = predict._predict_logreg(raw_sample)
+            predictions, lat = predict._predict_logreg(raw_sample)
             return {"target_class": data.target_class,
                     "prediction": int(predictions),
-                    "row_index": int(idx)}
+                    "row_index": int(idx),
+                    "detection_time": round(lat, 6)}
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Prediction error: {str(e)}")
     except Exception as e:
@@ -74,10 +75,11 @@ async def predict_lightgbm_endpoint(
     try:
         raw_sample,idx = sampler(data.target_class)
         try:
-            predictions= predict._predict_lightgbm(raw_sample)
+            predictions, lat = predict._predict_lightgbm(raw_sample)
             return {"target_class": data.target_class,
                     "prediction": int(predictions),
-                    "row_index": int(idx)}
+                    "row_index": int(idx),
+                    "detection_time": round(lat, 6)}
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Prediction error: {str(e)}")
     except Exception as e:
@@ -92,10 +94,11 @@ async def predict_ffnn_endpoint(
     try:
         raw_sample,idx = sampler(data.target_class)
         try:
-            predictions = predict._predict_ffnn(raw_sample)
+            predictions, lat = predict._predict_ffnn(raw_sample)
             return {"target_class": data.target_class,
                     "prediction": int(predictions),
-                    "row_index": int(idx)}
+                    "row_index": int(idx),
+                    "detection_time": round(lat, 6)}
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Prediction error: {str(e)}")
     except Exception as e:
@@ -110,10 +113,11 @@ async def predict_autoencoder_endpoint(
     try:
         raw_sample,idx = sampler(data.target_class)
         try:
-            predictions= predict._predict_autoencoder(raw_sample)
+            predictions, lat = predict._predict_autoencoder(raw_sample)
             return {"target_class": data.target_class,
                     "prediction": int(predictions),
-                    "row_index": int(idx)}
+                    "row_index": int(idx),
+                    "detection_time": round(lat, 6)}
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Prediction error: {str(e)}")
     except Exception as e:
@@ -128,10 +132,30 @@ async def predict_isolation_forest_endpoint(
     try:
         raw_sample,idx = sampler(data.target_class)
         try:
-            predictions = predict._predict_isolation_forest(raw_sample)
+            predictions, lat = predict._predict_isolation_forest(raw_sample)
             return {"target_class": data.target_class,
                     "prediction": int(predictions),
-                    "row_index": int(idx)}
+                    "row_index": int(idx),
+                    "detection_time": round(lat, 6)}
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Prediction error: {str(e)}")
+    except Exception as e:
+        raise HTTPException(status_code =500,detail =f"Sampling error : {str(e)}")
+
+@router.post("/predict/xgboost",tags=["Predict"])
+async def predict_xgboost_endpoint(
+    data: PredictionInput,
+    token: str = Depends(verify_token)
+):
+
+    try:
+        raw_sample,idx = sampler(data.target_class)
+        try:
+            predictions, lat = predict._predict_xgboost(raw_sample)
+            return {"target_class": data.target_class,
+                    "prediction": int(predictions),
+                    "row_index": int(idx),
+                    "detection_time": round(lat, 6)}
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Prediction error: {str(e)}")
     except Exception as e:
@@ -231,6 +255,9 @@ async def websocket_stream(websocket: WebSocket):
                     **stats
                 }
             })
+            
+            # Close connection after finishing the task
+            await websocket.close(code=1000)
                 
     except WebSocketDisconnect:
         print(f"WebSocket client disconnected.")
