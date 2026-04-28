@@ -4,8 +4,9 @@ from pydantic import BaseModel, validator
 from typing import Dict, Any, List
 import pandas as pd
 import os
+from utils import sampler
 from dotenv import load_dotenv
-from predict import predict_ffnn, predict_lightgbm, predict_logreg
+import predict
 from cors import configure_cors
 
 
@@ -48,43 +49,100 @@ async def predict_logreg_endpoint(
     data: PredictionInput,
     token: str = Depends(verify_token)
 ):
-    """
-    Logistic Regression prediction endpoint
-    Accepts JSON with 'target_class' (int)
-    """
     try:
-        predictions, row_index = predict_logreg(data.target_class)
-        return {"prediction": int(predictions[0]), "row_index": int(row_index)}
+        raw_sample,idx = sampler(data.target_class)
+        try:
+            predictions = predict._predict_logreg(raw_sample)
+            return {"target_class": data.target_class,
+                    "prediction": int(predictions),
+                    "row_index": int(idx)}
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Prediction error: {str(e)}")
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Prediction error: {str(e)}")
+        raise HTTPException(status_code =500,detail =f"Sampling error : {str(e)}")
+
 
 @router.post("/predict/lightgbm",tags=["Predict"])
 async def predict_lightgbm_endpoint(
     data: PredictionInput,
     token: str = Depends(verify_token)
 ):
-    """
-    LightGBM prediction endpoint
-    Accepts JSON with 'target_class' (int)
-    """
+
     try:
-        predictions, row_index = predict_lightgbm(data.target_class)
-        return {"prediction": int(predictions[0]), "row_index": int(row_index)}
+        raw_sample,idx = sampler(data.target_class)
+        try:
+            predictions= predict._predict_lightgbm(raw_sample)
+            return {"target_class": data.target_class,
+                    "prediction": int(predictions),
+                    "row_index": int(idx)}
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Prediction error: {str(e)}")
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Prediction error: {str(e)}")
+        raise HTTPException(status_code =500,detail =f"Sampling error : {str(e)}")
 
 @router.post("/predict/ffnn",tags=["Predict"])
 async def predict_ffnn_endpoint(
     data: PredictionInput,
     token: str = Depends(verify_token)
 ):
-    """
-    Feed-forward Neural Network prediction endpoint
-    Accepts JSON with 'target_class' (int)
-    """
+
     try:
-        predictions, row_index = predict_ffnn(data.target_class)
-        return {"prediction": int(predictions[0]), "row_index": int(row_index)}
+        raw_sample,idx = sampler(data.target_class)
+        try:
+            predictions = predict._predict_ffnn(raw_sample)
+            return {"target_class": data.target_class,
+                    "prediction": int(predictions),
+                    "row_index": int(idx)}
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Prediction error: {str(e)}")
+    except Exception as e:
+        raise HTTPException(status_code =500,detail =f"Sampling error : {str(e)}")
+
+@router.post("/predict/autoencoder",tags=["Predict"])
+async def predict_autoencoder_endpoint(
+    data: PredictionInput,
+    token: str = Depends(verify_token)
+):
+
+    try:
+        raw_sample,idx = sampler(data.target_class)
+        try:
+            predictions= predict._predict_autoencoder(raw_sample)
+            return {"target_class": data.target_class,
+                    "prediction": int(predictions),
+                    "row_index": int(idx)}
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Prediction error: {str(e)}")
+    except Exception as e:
+        raise HTTPException(status_code =500,detail =f"Sampling error : {str(e)}")
+
+@router.post("/predict/isolationForest",tags=["Predict"])
+async def predict_isolation_forest_endpoint(
+    data: PredictionInput,
+    token: str = Depends(verify_token)
+):
+
+    try:
+        raw_sample,idx = sampler(data.target_class)
+        try:
+            predictions = predict._predict_isolation_forest(raw_sample)
+            return {"target_class": data.target_class,
+                    "prediction": int(predictions),
+                    "row_index": int(idx)}
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Prediction error: {str(e)}")
+    except Exception as e:
+        raise HTTPException(status_code =500,detail =f"Sampling error : {str(e)}")
+
+@router.post("/predict/hybrid",tags=["Predict"])
+async def predict_hybrid_endpoint(
+    data: PredictionInput,
+    token: str = Depends(verify_token)
+):
+
+    try:
+        result = predict.predict_attack(data.target_class)
+        return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Prediction error: {str(e)}")
 
