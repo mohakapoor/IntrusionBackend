@@ -5,7 +5,7 @@ import numpy as np
 import os
 import warnings
 from dotenv import load_dotenv
-from utils import sampler, scale_supervised, scale_unsupervised
+from utils import sampler, scale_supervised, scale_unsupervised,sample_by_index
 
 warnings.filterwarnings("ignore")
 load_dotenv()
@@ -186,9 +186,47 @@ def predict_attack(target_class):
     
     return result
 
+
+def predict_attack_by_idx(idx):
+    raw_sample,target_class= sample_by_index(idx)
+    
+    # Unsupervised Check
+    ae_flag = _predict_autoencoder(raw_sample)
+    iso_flag = _predict_isolation_forest(raw_sample)
+    
+    result = {
+        "target_class" : target_class,
+        "status": "Benign",
+        "row_index": int(idx),
+        "unsupervised": {
+            "autoencoder": ae_flag,
+            "isolation_forest": iso_flag
+        }
+    }
+    
+    # Supervised Check 
+    if ae_flag == 1 or iso_flag == 1:
+        # Final decision rests with LightGBM
+        lgbm_pred = _predict_lightgbm(raw_sample)
+        
+        if lgbm_pred != 0:
+            result["status"] = "Attack Detected"
+            
+        result["supervised"] = {
+            "ffnn": _predict_ffnn(raw_sample),
+            "lightgbm": lgbm_pred,
+            "logreg": _predict_logreg(raw_sample)
+        }
+    
+    return result
+
 if __name__ == "__main__":
     import json
-    print("Testing Pipeline (Class 0):")
-    print(json.dumps(predict_attack(0), indent=2))
-    print("\nTesting Pipeline (Class 4):")
-    print(json.dumps(predict_attack(4), indent=2))
+    # print("Testing Pipeline (Class 0):")
+    # print(json.dumps(predict_attack(0), indent=2))
+    # print("\nTesting Pipeline (Class 4):")
+    # print(json.dumps(predict_attack(4), indent=2))
+    # print("Testing Pipeline (Class 0):")
+    # print(json.dumps(predict_attack(0), indent=2))
+    print("\nTesting Pipeline (idx  17502 ):")
+    print(json.dumps(predict_attack_by_idx(17502), indent=2))
