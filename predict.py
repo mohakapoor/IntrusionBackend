@@ -1,3 +1,4 @@
+import time
 import torch
 import torch.nn as nn
 import joblib
@@ -88,33 +89,60 @@ AE_MODEL.eval()
 def sigmoid(z):
     return 1 / (1 + np.exp(-z))
 
+# Load XGBoost Model
+XGBOOST_MODEL = joblib.load(os.getenv('PATH_XGBOOST'))
+
 # Prediction Functions
 
 def _predict_ffnn(raw_sample):
+    start_time = time.perf_counter()
     scaled_data = scale_supervised(raw_sample)
     X_tensor = torch.tensor(scaled_data, dtype=torch.float32)
     with torch.no_grad():
         logits = FFNN_MODEL(X_tensor)
         preds = logits.argmax(dim=1)
-    return int(preds.numpy()[0])
+    latency = time.perf_counter() - start_time
+    # Use .item() to safely get the scalar value
+    return int(preds.item()), latency
 
 def _predict_lightgbm(raw_sample):
+    start_time = time.perf_counter()
     scaled_data = scale_supervised(raw_sample)
-    y = LIGHTGBM_MODEL.predict(scaled_data)
-    return int(y[0])
+    y_pred = LIGHTGBM_MODEL.predict(scaled_data)
+    latency = time.perf_counter() - start_time
+    # Use .ravel()[0] to handle both scalars and arrays
+    return int(np.atleast_1d(y_pred).ravel()[0]), latency
+
+def _predict_xgboost(raw_sample):
+    start_time = time.perf_counter()
+    scaled_data = scale_supervised(raw_sample)
+    # Use .item() or .ravel()[0] for safety
+    y_pred = XGBOOST_MODEL.predict(scaled_data)
+    latency = time.perf_counter() - start_time
+    return int(np.atleast_1d(y_pred).ravel()[0]), latency
 
 def _predict_logreg(raw_sample):
+    start_time = time.perf_counter()
     scaled_data = scale_supervised(raw_sample)
-    y = (sigmoid(scaled_data @ LOGREG_W + LOGREG_B) > 0.5).astype(int)
-    return int(y[0])
+    
+    # Manually compute linear layer (W * x + b)
+    logits = np.dot(scaled_data, LOGREG_W.T) + LOGREG_B
+    # Use .item() or .ravel()[0] for safety
+    val = np.atleast_1d(logits).ravel()[0]
+    prediction = 1 if val > 0 else 0
+    latency = time.perf_counter() - start_time
+    return prediction, latency
 
 def _predict_isolation_forest(raw_sample):
+    start_time = time.perf_counter()
     scaled_data = scale_unsupervised(raw_sample)
     score = ISO_FOREST.decision_function(scaled_data)
     prediction = 1 if score[0] < ISO_THRESHOLD else 0
-    return prediction
+    latency = time.perf_counter() - start_time
+    return prediction, latency
 
 def _predict_autoencoder(raw_sample):
+    start_time = time.perf_counter()
     scaled_data = scale_unsupervised(raw_sample)
     X_tensor = torch.tensor(scaled_data, dtype=torch.float32)
     with torch.no_grad():
@@ -127,7 +155,8 @@ def _predict_autoencoder(raw_sample):
     
     # 1 if combined error is above threshold, else 0
     prediction = 1 if error_val > AE_THRESHOLD else 0
-    return prediction
+    latency = time.perf_counter() - start_time
+    return prediction, latency
 
 # # --- Legacy Public Functions (For compatibility if needed) ---
 
@@ -156,43 +185,11 @@ def _predict_autoencoder(raw_sample):
 def predict_attack(target_class):
     raw_sample, idx = sampler(target_class)
     
-    # Unsupervised Check
-    ae_flag = _predict_autoencoder(raw_sample)
-    iso_flag = _predict_isolation_forest(raw_sample)
-    
-    result = {
-        "target_class" : target_class,
-        "status": "Benign",
-        "row_index": int(idx),
-        "unsupervised": {
-            "autoencoder": ae_flag,
-            "isolation_forest": iso_flag
-        }
-    }
-    
-    # Supervised Check 
-    if ae_flag == 1 or iso_flag == 1:
-        # Final decision rests with LightGBM
-        lgbm_pred = _predict_lightgbm(raw_sample)
-        
-        if lgbm_pred != 0:
-            result["status"] = "Attack Detected"
-            
-        result["supervised"] = {
-            "ffnn": _predict_ffnn(raw_sample),
-            "lightgbm": lgbm_pred,
-            "logreg": _predict_logreg(raw_sample)
-        }
-    
-    return result
-
-
-def predict_attack_by_idx(idx):
-    raw_sample,target_class= sample_by_index(idx)
+    total_start = time.perf_counter()
     
     # Unsupervised Check
-    ae_flag = _predict_autoencoder(raw_sample)
-    iso_flag = _predict_isolation_forest(raw_sample)
+    ae_flag, ae_lat = _predict_autoencoder(raw_sample)
+    iso_flag, iso_lat = _predict_isolation_forest(raw_sample)
     
     result = {
         "target_class" : int(target_class),
@@ -201,32 +198,98 @@ def predict_attack_by_idx(idx):
         "unsupervised": {
             "autoencoder": ae_flag,
             "isolation_forest": iso_flag
+        },
+        "latencies": {
+            "autoencoder": round(ae_lat, 6),
+            "isolation_forest": round(iso_lat, 6)
         }
     }
     
     # Supervised Check 
     if ae_flag == 1 or iso_flag == 1:
         # Final decision rests with LightGBM
-        lgbm_pred = _predict_lightgbm(raw_sample)
+        lgbm_pred, lgbm_lat = _predict_lightgbm(raw_sample)
+        ffnn_pred, ffnn_lat = _predict_ffnn(raw_sample)
+        logreg_pred, logreg_lat = _predict_logreg(raw_sample)
+        xgb_pred, xgb_lat = _predict_xgboost(raw_sample)
         
         if lgbm_pred != 0:
             result["status"] = "Attack Detected"
             
         result["supervised"] = {
-            "ffnn": _predict_ffnn(raw_sample),
+            "ffnn": ffnn_pred,
             "lightgbm": lgbm_pred,
-            "logreg": _predict_logreg(raw_sample)
+            "logreg": logreg_pred,
+            "xgboost": xgb_pred
         }
+        result["latencies"].update({
+            "ffnn": round(ffnn_lat, 6),
+            "lightgbm": round(lgbm_lat, 6),
+            "logreg": round(logreg_lat, 6),
+            "xgboost": round(xgb_lat, 6)
+        })
     
+    result["total_detection_time"] = round(time.perf_counter() - total_start, 6)
+    return result
+
+
+def predict_attack_by_idx(idx):
+    raw_sample, target_class = sample_by_index(idx)
+    
+    total_start = time.perf_counter()
+    
+    # Unsupervised Check
+    ae_flag, ae_lat = _predict_autoencoder(raw_sample)
+    iso_flag, iso_lat = _predict_isolation_forest(raw_sample)
+    
+    result = {
+        "target_class" : int(target_class),
+        "status": "Benign",
+        "row_index": int(idx),
+        "unsupervised": {
+            "autoencoder": ae_flag,
+            "isolation_forest": iso_flag
+        },
+        "latencies": {
+            "autoencoder": round(ae_lat, 6),
+            "isolation_forest": round(iso_lat, 6)
+        }
+    }
+    
+    # Supervised Check 
+    if ae_flag == 1 or iso_flag == 1:
+        # Final decision rests with LightGBM
+        lgbm_pred, lgbm_lat = _predict_lightgbm(raw_sample)
+        ffnn_pred, ffnn_lat = _predict_ffnn(raw_sample)
+        logreg_pred, logreg_lat = _predict_logreg(raw_sample)
+        xgb_pred, xgb_lat = _predict_xgboost(raw_sample)
+        
+        if lgbm_pred != 0:
+            result["status"] = "Attack Detected"
+            
+        result["supervised"] = {
+            "ffnn": ffnn_pred,
+            "lightgbm": lgbm_pred,
+            "logreg": logreg_pred,
+            "xgboost": xgb_pred
+        }
+        result["latencies"].update({
+            "ffnn": round(ffnn_lat, 6),
+            "lightgbm": round(lgbm_lat, 6),
+            "logreg": round(logreg_lat, 6),
+            "xgboost": round(xgb_lat, 6)
+        })
+    
+    result["total_detection_time"] = round(time.perf_counter() - total_start, 6)
     return result
 
 if __name__ == "__main__":
     import json
-    # print("Testing Pipeline (Class 0):")
-    # print(json.dumps(predict_attack(0), indent=2))
-    # print("\nTesting Pipeline (Class 4):")
-    # print(json.dumps(predict_attack(4), indent=2))
-    # print("Testing Pipeline (Class 0):")
-    # print(json.dumps(predict_attack(0), indent=2))
-    print("\nTesting Pipeline (idx  17502 ):")
-    print(json.dumps(predict_attack_by_idx(17502), indent=2))
+    print("Testing Pipeline (Class 0):")
+    print(json.dumps(predict_attack(0), indent=2))
+    print("\nTesting Pipeline (Class 4):")
+    print(json.dumps(predict_attack(4), indent=2))
+    # # print("Testing Pipeline (Class 0):")
+    # # print(json.dumps(predict_attack(0), indent=2))
+    # print("\nTesting Pipeline (idx  17502 ):")
+    # print(json.dumps(predict_attack_by_idx(17502), indent=2))
