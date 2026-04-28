@@ -195,7 +195,7 @@ def predict_attack_by_idx(idx):
     iso_flag = _predict_isolation_forest(raw_sample)
     
     result = {
-        "target_class" : target_class,
+        "target_class" : int(target_class),
         "status": "Benign",
         "row_index": int(idx),
         "unsupervised": {
