@@ -18,6 +18,8 @@ router = APIRouter(prefix="/intrusiondetection")
 class PredictionInput(BaseModel):
     target_class: int
 
+class PredictionByIndexInput(BaseModel):
+    index: int
 
 security = HTTPBearer()
 API_TOKEN = os.getenv("TOKEN")
@@ -145,6 +147,21 @@ async def predict_hybrid_endpoint(
         return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Prediction error: {str(e)}")
+    
+
+@router.post("/predict/hybrid_by_index",tags=["Predict"])
+async def predict_hybrid_by_index_endpoint(
+    data: PredictionByIndexInput,
+    token: str = Depends(verify_token)
+):
+
+    try:
+        result = predict.predict_attack_by_idx(data.index)
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Prediction error: {str(e)}")
+
+
 
 app.include_router(router)
 
