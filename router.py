@@ -236,12 +236,19 @@ async def websocket_stream(websocket: WebSocket):
                     stats["actual_counts"][actual] = stats["actual_counts"].get(actual, 0) + 1
                     stats["predicted_counts"][predicted] = stats["predicted_counts"].get(predicted, 0) + 1
                 
-                # Send the batch
+                # Calculate current accuracy for this snapshot
+                current_acc = stats["correct_predictions"] / stats["total_processed"] if stats["total_processed"] > 0 else 0
+                
+                # Send the batch with real-time stats
                 await websocket.send_json({
                     "type": "batch",
                     "batch_start": i,
                     "batch_end": end_idx,
-                    "data": batch_results
+                    "data": batch_results,
+                    "current_statistics": {
+                        "accuracy": round(current_acc, 4),
+                        **stats
+                    }
                 })
                 
                 await asyncio.sleep(0.01)
