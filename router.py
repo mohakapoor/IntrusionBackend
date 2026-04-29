@@ -218,9 +218,10 @@ async def websocket_stream(websocket: WebSocket):
             for i in range(start_idx, total_rows, batch_size):
                 batch_results = []
                 end_idx = min(i + batch_size, total_rows)
-                
+
+                loop = asyncio.get_event_loop()
                 for idx in range(i, end_idx):
-                    result = predict.predict_attack_by_idx(idx)
+                    result = await loop.run_in_executor(None,predict.predict_attack_by_idx,idx)
                     batch_results.append(result)
                     
                     # Update Statistics
@@ -243,7 +244,7 @@ async def websocket_stream(websocket: WebSocket):
                     "data": batch_results
                 })
                 
-                # await asyncio.sleep(0.5)
+                await asyncio.sleep(0.01)
             
             # Send Final Statistics
             accuracy = stats["correct_predictions"] / stats["total_processed"] if stats["total_processed"] > 0 else 0
@@ -269,4 +270,4 @@ app.include_router(router)
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run("router:app", host="0.0.0.0", port=8000, workers=4)
