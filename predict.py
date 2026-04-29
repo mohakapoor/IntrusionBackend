@@ -94,9 +94,10 @@ XGBOOST_MODEL = joblib.load(os.getenv('PATH_XGBOOST'))
 
 # Prediction Functions
 
-def _predict_ffnn(raw_sample):
+def _predict_ffnn(raw_sample, scaled_data=None):
     start_time = time.perf_counter()
-    scaled_data = scale_supervised(raw_sample)
+    if scaled_data is None:
+        scaled_data = scale_supervised(raw_sample)
     X_tensor = torch.tensor(scaled_data, dtype=torch.float32)
     with torch.no_grad():
         logits = FFNN_MODEL(X_tensor)
@@ -105,25 +106,28 @@ def _predict_ffnn(raw_sample):
     # Use .item() to safely get the scalar value
     return int(preds.item()), latency
 
-def _predict_lightgbm(raw_sample):
+def _predict_lightgbm(raw_sample, scaled_data=None):
     start_time = time.perf_counter()
-    scaled_data = scale_supervised(raw_sample)
+    if scaled_data is None:
+        scaled_data = scale_supervised(raw_sample)
     y_pred = LIGHTGBM_MODEL.predict(scaled_data)
     latency = time.perf_counter() - start_time
     # Use .ravel()[0] to handle both scalars and arrays
     return int(np.atleast_1d(y_pred).ravel()[0]), latency
 
-def _predict_xgboost(raw_sample):
+def _predict_xgboost(raw_sample, scaled_data=None):
     start_time = time.perf_counter()
-    scaled_data = scale_supervised(raw_sample)
+    if scaled_data is None:
+        scaled_data = scale_supervised(raw_sample)
     # Use .item() or .ravel()[0] for safety
     y_pred = XGBOOST_MODEL.predict(scaled_data)
     latency = time.perf_counter() - start_time
     return int(np.atleast_1d(y_pred).ravel()[0]), latency
 
-def _predict_logreg(raw_sample):
+def _predict_logreg(raw_sample, scaled_data=None):
     start_time = time.perf_counter()
-    scaled_data = scale_supervised(raw_sample)
+    if scaled_data is None:
+        scaled_data = scale_supervised(raw_sample)
     
     # Manually compute linear layer (W * x + b)
     logits = np.dot(scaled_data, LOGREG_W.T) + LOGREG_B
@@ -133,17 +137,19 @@ def _predict_logreg(raw_sample):
     latency = time.perf_counter() - start_time
     return prediction, latency
 
-def _predict_isolation_forest(raw_sample):
+def _predict_isolation_forest(raw_sample, scaled_data=None):
     start_time = time.perf_counter()
-    scaled_data = scale_unsupervised(raw_sample)
+    if scaled_data is None:
+        scaled_data = scale_unsupervised(raw_sample)
     score = ISO_FOREST.decision_function(scaled_data)
     prediction = 1 if score[0] < ISO_THRESHOLD else 0
     latency = time.perf_counter() - start_time
     return prediction, latency
 
-def _predict_autoencoder(raw_sample):
+def _predict_autoencoder(raw_sample, scaled_data=None):
     start_time = time.perf_counter()
-    scaled_data = scale_unsupervised(raw_sample)
+    if scaled_data is None:
+        scaled_data = scale_unsupervised(raw_sample)
     X_tensor = torch.tensor(scaled_data, dtype=torch.float32)
     with torch.no_grad():
         reconstructed = AE_MODEL(X_tensor)
@@ -187,9 +193,12 @@ def predict_attack(target_class):
     
     total_start = time.perf_counter()
     
+    # Pre-scale once for unsupervised models
+    scaled_unsupervised = scale_unsupervised(raw_sample)
+    
     # Unsupervised Check
-    ae_flag, ae_lat = _predict_autoencoder(raw_sample)
-    iso_flag, iso_lat = _predict_isolation_forest(raw_sample)
+    ae_flag, ae_lat = _predict_autoencoder(raw_sample, scaled_data=scaled_unsupervised)
+    iso_flag, iso_lat = _predict_isolation_forest(raw_sample, scaled_data=scaled_unsupervised)
     
     result = {
         "target_class" : int(target_class),
@@ -207,11 +216,14 @@ def predict_attack(target_class):
     
     # Supervised Check 
     if ae_flag == 1 or iso_flag == 1:
+        # Pre-scale once for all supervised models
+        scaled_supervised = scale_supervised(raw_sample)
+        
         # Final decision rests with LightGBM
-        lgbm_pred, lgbm_lat = _predict_lightgbm(raw_sample)
-        ffnn_pred, ffnn_lat = _predict_ffnn(raw_sample)
-        logreg_pred, logreg_lat = _predict_logreg(raw_sample)
-        xgb_pred, xgb_lat = _predict_xgboost(raw_sample)
+        lgbm_pred, lgbm_lat = _predict_lightgbm(raw_sample, scaled_data=scaled_supervised)
+        ffnn_pred, ffnn_lat = _predict_ffnn(raw_sample, scaled_data=scaled_supervised)
+        logreg_pred, logreg_lat = _predict_logreg(raw_sample, scaled_data=scaled_supervised)
+        xgb_pred, xgb_lat = _predict_xgboost(raw_sample, scaled_data=scaled_supervised)
         
         if lgbm_pred != 0:
             result["status"] = "Attack Detected"
@@ -238,9 +250,12 @@ def predict_attack_by_idx(idx):
     
     total_start = time.perf_counter()
     
+    # Pre-scale once for unsupervised models
+    scaled_unsupervised = scale_unsupervised(raw_sample)
+    
     # Unsupervised Check
-    ae_flag, ae_lat = _predict_autoencoder(raw_sample)
-    iso_flag, iso_lat = _predict_isolation_forest(raw_sample)
+    ae_flag, ae_lat = _predict_autoencoder(raw_sample, scaled_data=scaled_unsupervised)
+    iso_flag, iso_lat = _predict_isolation_forest(raw_sample, scaled_data=scaled_unsupervised)
     
     result = {
         "target_class" : int(target_class),
@@ -258,11 +273,14 @@ def predict_attack_by_idx(idx):
     
     # Supervised Check 
     if ae_flag == 1 or iso_flag == 1:
+        # Pre-scale once for all supervised models
+        scaled_supervised = scale_supervised(raw_sample)
+        
         # Final decision rests with LightGBM
-        lgbm_pred, lgbm_lat = _predict_lightgbm(raw_sample)
-        ffnn_pred, ffnn_lat = _predict_ffnn(raw_sample)
-        logreg_pred, logreg_lat = _predict_logreg(raw_sample)
-        xgb_pred, xgb_lat = _predict_xgboost(raw_sample)
+        lgbm_pred, lgbm_lat = _predict_lightgbm(raw_sample, scaled_data=scaled_supervised)
+        ffnn_pred, ffnn_lat = _predict_ffnn(raw_sample, scaled_data=scaled_supervised)
+        logreg_pred, logreg_lat = _predict_logreg(raw_sample, scaled_data=scaled_supervised)
+        xgb_pred, xgb_lat = _predict_xgboost(raw_sample, scaled_data=scaled_supervised)
         
         if lgbm_pred != 0:
             result["status"] = "Attack Detected"

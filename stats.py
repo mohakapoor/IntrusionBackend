@@ -64,5 +64,19 @@ def generate_stats():
     
     print("Plot saved to confusion_matrix.png")
 
+    # 3. Generate Classification Report Heatmap
+    report_dict = classification_report(y_true, y_pred, output_dict=True)
+    # Convert to DataFrame and remove support/averages for plotting
+    report_df = pd.DataFrame(report_dict).iloc[:-1, :].T
+    report_df = report_df.drop(['accuracy', 'macro avg', 'weighted avg'], axis=0, errors='ignore')
+    
+    plt.figure(figsize=(10, 8))
+    sns.heatmap(report_df, annot=True, cmap='Blues')
+    plt.title("Classification Report Metrics per Class")
+    plt.savefig("classification_report.png", dpi=300)
+    plt.close()
+    
+    print("Plot saved to classification_report.png")
+
 if __name__ == "__main__":
     generate_stats()
