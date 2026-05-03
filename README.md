@@ -1,129 +1,67 @@
 # Intrusion Tracker Backend
 
-FastAPI backend for network intrusion detection using machine learning models.
+[![FastAPI](https://img.shields.io/badge/FastAPI-005571?style=for-the-badge&logo=fastapi)](https://fastapi.tiangolo.com)
+[![Python](https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
+[![PyTorch](https://img.shields.io/badge/PyTorch-EE4C2C?style=for-the-badge&logo=pytorch&logoColor=white)](https://pytorch.org/)
+[![Docker](https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white)](https://www.docker.com/)
 
-## Project Structure
+An enterprise-grade **Network Intrusion Detection System (NIDS)** backend powered by a state-of-the-art hierarchical machine learning pipeline. This system doesn't just predict; it verifies anomalies through a multi-layered "Veto" logic to ensure maximum accuracy and minimum false alarms.
 
-```
-intrusionTrackerBackend/
-├── cors.py                 # CORS configuration
-├── predict.py              # Model loading and prediction logic
-├── router.py               # FastAPI routes
-├── utils.py                # Data sampling and scaling utilities
-├── test.py                 # Test scripts
-└── models/                 # ML model files
-    ├── ffnn_multiclass.pt
-    ├── isolation_forest.joblib
-    ├── autoencoder_model.pth
-    ├── logreg_b.npy
-    ├── logreg_W.npy
-    └── multiclass_lightgbm.joblib
-```
+---
 
-## API Endpoints
+## 🌐 Live Demo
 
-### 🔓 Public Endpoints
+You can explore the project and its capabilities live at:
+**[https://www.mohakapoor.in/projects/IntrusionDetection](https://www.mohakapoor.in/projects/IntrusionDetection)**
 
-#### Get API Information
-```http
-GET /intrusiondetection/api_name
-```
 
-**Response:**
-```json
-{
-  "name": "Intrusion Detection API",
-  "version": "1.0.0"
-}
-```
+---
 
-**Example:**
+## ✨ Key Features
+
+- **🧠 Hierarchical ML Pipeline**: Combines Unsupervised Anomaly Detection (Autoencoders, Isolation Forests) with Supervised Classification (LightGBM, XGBoost, FFNN).
+- **⚡ Real-time Inference**: Optimized for low-latency network flow analysis.
+- **🔄 WebSocket Streaming**: Stream and evaluate massive datasets with live accuracy telemetry.
+- **🛡️ Secure by Design**: Token-based authentication and restricted CORS policies.
+- **🐳 Containerized**: Ready for deployment via Docker and Docker Compose.
+- **📊 Detailed Analytics**: Built-in tools for generating confusion matrices and classification reports.
+
+---
+
+## 🚀 Quick Start
+
+### 1. Environment Setup
+Clone the repository and create your `.env` file:
 ```bash
-curl -X GET http://localhost:8000/intrusiondetection/api_name
+cp .env.example .env # Ensure you fill in your secure TOKEN
 ```
 
----
-
-#### Health Check
-```http
-GET /intrusiondetection/health
-```
-
-**Response:**
-```json
-{
-  "status": "healthy"
-}
-```
-
-**Example:**
+### 2. Run with Docker (Recommended)
 ```bash
-curl -X GET http://localhost:8000/intrusiondetection/health
+docker-compose up --build
 ```
 
-### 🔒 Protected Endpoints
-
-> **Authentication Required:** All prediction endpoints require authentication (Bearer token for HTTP, JSON token for WebSocket).
-
-#### Hybrid Detection (Recommended)
-```http
-POST /intrusiondetection/predict/hybrid
-```
-Uses the hierarchical pipeline: Anomaly detection (Unsupervised) -> Classification (Supervised).
+### 3. Access the API
+The API will be available at `http://localhost:8000`. 
+Check health: `GET /intrusiondetection/health`
 
 ---
 
-#### Prediction By Index
-```http
-POST /intrusiondetection/predict/hybrid_by_index
-```
-**Request Body:**
-```json
-{
-  "index": 17502
-}
-```
+## 📖 Deep Dive
+
+For technical implementation details, model architectures, and full API specifications, please refer to our:
+
+### [👉 Detailed Documentation](./documentation.md)
 
 ---
 
-#### WebSocket Streaming
-```http
-WS /intrusiondetection/ws/stream
-```
-Streams the dataset in batches of 100 rows.
+## 🛠️ Tech Stack
 
-**Authentication & Start Command:**
-After connecting, send the following JSON message to start the stream:
-```json
-{
-  "command": "start",
-  "token": "your_secure_token_here",
-  "start_at": 0
-}
-```
+- **Framework**: FastAPI
+- **Data Engine**: Polars & Pandas
+- **ML/DL**: PyTorch, Scikit-Learn, LightGBM, XGBoost
+- **Deployment**: Docker, Uvicorn
+- **Utilities**: Joblib, NumPy, Matplotlib/Seaborn
 
 ---
-
-#### Individual Model Endpoints
-- `POST /intrusiondetection/predict/logreg`
-- `POST /intrusiondetection/predict/lightgbm`
-- `POST /intrusiondetection/predict/ffnn`
-- `POST /intrusiondetection/predict/autoencoder`
-- `POST /intrusiondetection/predict/isolationForest`
-
-## Models & Logic
-
-1.  **Unsupervised Layer**: Autoencoder & Isolation Forest act as "flaggers" for anomalies.
-2.  **Supervised Layer**: LightGBM, FFNN, and LogReg provide precise classification.
-3.  **LGBM Veto**: In the hybrid pipeline, LightGBM acts as the final judge to reduce false positives from the unsupervised models.
-
-## Setup
-
-```bash
-# Install dependencies
-pip install fastapi uvicorn pandas numpy torch lightgbm scikit-learn python-dotenv joblib polars websockets
-```
-
-**Environment Variables (.env):**
-- `TOKEN`: The secure token used for all authenticated requests.
-- `PATH_STANDARD`, `PATH_MINMAX`, `PATH_PCA`, `PATH_LIGHTGBM`: Paths to the model files.
+Developed by **Mohak Kapoor**
