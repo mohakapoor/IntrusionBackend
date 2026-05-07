@@ -1,0 +1,14 @@
+=== LOGREG CROSS-DATASET VALIDATION ===
+              precision    recall  f1-score   support
+
+           0       0.40      0.82      0.54      5000
+           1       0.94      0.69      0.80     20000
+
+    accuracy                           0.72     25000
+   macro avg       0.67      0.76      0.67     25000
+weighted avg       0.83      0.72      0.74     25000
+
+
+=== CONFUSION MATRIX ===
+[[ 4125   875]
+ [ 6207 13793]]

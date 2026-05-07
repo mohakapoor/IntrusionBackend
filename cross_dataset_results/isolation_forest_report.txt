@@ -1,0 +1,16 @@
+=== ISOLATION_FOREST CROSS-DATASET VALIDATION ===
+ROC AUC SCORE: 0.4086
+
+              precision    recall  f1-score   support
+
+           0       0.19      0.31      0.24      5000
+           1       0.80      0.67      0.72     20000
+
+    accuracy                           0.60     25000
+   macro avg       0.49      0.49      0.48     25000
+weighted avg       0.67      0.60      0.63     25000
+
+
+=== CONFUSION MATRIX ===
+[[ 1574  3426]
+ [ 6698 13302]]
