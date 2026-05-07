@@ -212,7 +212,25 @@ async def websocket_stream(websocket: WebSocket):
                 "total_processed": 0,
                 "correct_predictions": 0,
                 "actual_counts": {},
-                "predicted_counts": {}
+                "predicted_counts": {},
+                "total_latencies": {
+                    "autoencoder": 0.0,
+                    "isolation_forest": 0.0,
+                    "ffnn": 0.0,
+                    "lightgbm": 0.0,
+                    "logreg": 0.0,
+                    "xgboost": 0.0,
+                    "pipeline": 0.0
+                },
+                "latency_counts": {
+                    "autoencoder": 0,
+                    "isolation_forest": 0,
+                    "ffnn": 0,
+                    "lightgbm": 0,
+                    "logreg": 0,
+                    "xgboost": 0,
+                    "pipeline": 0
+                }
             }
             
             for i in range(start_idx, total_rows, batch_size):
@@ -235,6 +253,16 @@ async def websocket_stream(websocket: WebSocket):
                     
                     stats["actual_counts"][actual] = stats["actual_counts"].get(actual, 0) + 1
                     stats["predicted_counts"][predicted] = stats["predicted_counts"].get(predicted, 0) + 1
+
+                    # Update Latencies
+                    res_lats = result.get("latencies", {})
+                    for model, lat in res_lats.items():
+                        if model in stats["total_latencies"]:
+                            stats["total_latencies"][model] += lat
+                            stats["latency_counts"][model] += 1
+                    
+                    stats["total_latencies"]["pipeline"] += result.get("total_detection_time", 0)
+                    stats["latency_counts"]["pipeline"] += 1
                 
                 # Calculate current accuracy for this snapshot
                 current_acc = stats["correct_predictions"] / stats["total_processed"] if stats["total_processed"] > 0 else 0
@@ -247,7 +275,8 @@ async def websocket_stream(websocket: WebSocket):
                     "data": batch_results,
                     "current_statistics": {
                         "accuracy": round(current_acc, 4),
-                        **stats
+                        "total_processed": stats["total_processed"],
+                        "correct_predictions": stats["correct_predictions"]
                     }
                 })
                 
@@ -255,12 +284,24 @@ async def websocket_stream(websocket: WebSocket):
             
             # Send Final Statistics
             accuracy = stats["correct_predictions"] / stats["total_processed"] if stats["total_processed"] > 0 else 0
+            
+            # Calculate Average Latencies
+            avg_latencies = {
+                model: round(stats["total_latencies"][model] / stats["latency_counts"][model], 6)
+                if stats["latency_counts"][model] > 0 else 0
+                for model in stats["total_latencies"]
+            }
+
             await websocket.send_json({
                 "type": "summary",
                 "status": "Stream Complete",
                 "statistics": {
                     "accuracy": round(accuracy, 4),
-                    **stats
+                    "total_processed": stats["total_processed"],
+                    "correct_predictions": stats["correct_predictions"],
+                    "actual_counts": stats["actual_counts"],
+                    "predicted_counts": stats["predicted_counts"],
+                    "average_latencies": avg_latencies
                 }
             })
             
