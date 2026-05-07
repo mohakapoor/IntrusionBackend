@@ -104,6 +104,31 @@ After connecting, send the following JSON:
 }
 ```
 
+**Final Summary Message**:
+At the end of the stream, the server sends a summary containing final statistics and average latencies:
+```json
+{
+  "type": "summary",
+  "status": "Stream Complete",
+  "statistics": {
+    "accuracy": 0.85,
+    "total_processed": 1000,
+    "correct_predictions": 850,
+    "actual_counts": {"0": 100, "1": 750, ...},
+    "predicted_counts": {"0": 120, "1": 730, ...},
+    "average_latencies": {
+      "autoencoder": 0.000123,
+      "isolation_forest": 0.000045,
+      "ffnn": 0.000456,
+      "lightgbm": 0.000789,
+      "logreg": 0.000012,
+      "xgboost": 0.000890,
+      "pipeline": 0.001234
+    }
+  }
+}
+```
+
 ---
 
 ## Technical Deep Dive: The LGBM Veto
